@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <EditText
+        android:id="@+id/etIP"
+        android:layout_width="0dp"
+        android:layout_height="45dp"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginEnd="10dp"
+        android:ems="10"
+        android:hint="IP Address"
+        android:inputType="textUri"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <EditText
+        android:id="@+id/etPort"
+        android:layout_width="0dp"
+        android:layout_height="45dp"
+        android:layout_marginStart="10dp"
+        android:layout_marginEnd="10dp"
+        android:ems="10"
+        android:hint="Port"
+        android:inputType="number"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/etIP" />
+
+    <Button
+        android:id="@+id/btnSave"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="24dp"
+        android:onClick="saveBtn_onClick"
+        android:text="Save"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/etPort" />
+
+    <Button
+        android:id="@+id/btnSave2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="24dp"
+        android:onClick="connectBtn_onClick"
+        android:text="Connect"
+        app:layout_constraintStart_toEndOf="@+id/btnSave"
+        app:layout_constraintTop_toBottomOf="@+id/etPort" />
+
+    <EditText
+        android:id="@+id/etMessage"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="20dp"
+        android:ems="10"
+        android:inputType="textMultiLine"
+        android:textIsSelectable="true"
+        app:layout_constrainedHeight="true"
+        app:layout_constraintEnd_toStartOf="@+id/btnGo"
+        app:layout_constraintHeight_max="150dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/linearLayout" />
+
+    <Button
+        android:id="@+id/btnGo"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_marginEnd="10dp"
+        android:onClick="goBtn_OnClick"
+        android:text="GO"
+        app:layout_constraintBottom_toBottomOf="@+id/etMessage"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/etMessage"
+        app:layout_constraintVertical_bias="1.0" />
+
+    <LinearLayout
+        android:id="@+id/linearLayout"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="10dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/cbTrim">
+
+        <Button
+            android:id="@+id/button3"
+            android:layout_width="@dimen/box_size"
+            android:layout_height="@dimen/box_size"
+            android:onClick="insertBtn_OnClick"
+            android:text=" "
+            android:textAlignment="center" />
+
+        <Button
+            android:id="@+id/button5"
+            android:layout_width="@dimen/box_size"
+            android:layout_height="@dimen/box_size"
+            android:onClick="insertBtn_OnClick"
+            android:text="，"
+            android:textAlignment="center" />
+
+        <Button
+            android:id="@+id/button6"
+            android:layout_width="@dimen/box_size"
+            android:layout_height="@dimen/box_size"
+            android:onClick="insertBtn_OnClick"
+            android:text="。"
+            android:textAlignment="center" />
+
+        <Button
+            android:id="@+id/button7"
+            android:layout_width="@dimen/box_size"
+            android:layout_height="@dimen/box_size"
+            android:onClick="insertBtn_OnClick"
+            android:text="、"
+            android:textAlignment="center" />
+
+        <Button
+            android:id="@+id/button8"
+            android:layout_width="@dimen/box_size"
+            android:layout_height="@dimen/box_size"
+            android:layout_weight="0"
+            android:onClick="insertBtn_OnClick"
+            android:text="："
+            android:textAlignment="center" />
+
+        <Button
+            android:id="@+id/button9"
+            android:layout_width="@dimen/box_size"
+            android:layout_height="@dimen/box_size"
+            android:layout_weight="0"
+            android:onClick="insertBtn_OnClick"
+            android:text="；"
+            android:textAlignment="center" />
+
+        <Button
+            android:id="@+id/button10"
+            android:layout_width="@dimen/box_size"
+            android:layout_height="@dimen/box_size"
+            android:layout_weight="0"
+            android:onClick="insertBtn_OnClick"
+            android:text="？"
+            android:textAlignment="center" />
+
+        <Button
+            android:id="@+id/button11"
+            android:layout_width="@dimen/box_size"
+            android:layout_height="@dimen/box_size"
+            android:onClick="insertBtn_OnClick"
+            android:text="！"
+            android:textAlignment="center" />
+    </LinearLayout>
+
+    <CheckBox
+        android:id="@+id/cbTrim"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="40dp"
+        android:checked="true"
+        android:text="Trim after punctuation mark"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/btnSave" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
