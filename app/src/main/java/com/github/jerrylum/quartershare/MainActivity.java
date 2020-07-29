@@ -29,6 +29,7 @@ import java.util.UUID;
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -139,15 +140,20 @@ public class MainActivity extends AppCompatActivity {
         }
 
         public void sendMessage(String msg) {
+            Log.d("Socket", "prepare to send string message: " + msg);
             sendMessage(msg.getBytes());
         }
 
         public void sendMessage(byte[] msg) {
             try {
-                if (serverEncryptCipher != null) {
+                if (shareAESCipher != null) {
+                    usingTcpClient.sendMessage(shareAESCipher.doFinal(msg));
+                    Log.d("Socket", "send message using share aes cipher");
+                } else if (serverEncryptCipher != null) {
                     usingTcpClient.sendMessage(serverEncryptCipher.doFinal(msg));
+                    Log.d("Socket", "send message using server cipher");
                 } else {
-                    Log.d("Socket", "Server cipher not found");
+                    Log.d("Socket", "no cipher found");
                 }
             } catch (Exception ex) {
                 Log.d("Socket", "Encryption using server cipher failed");
@@ -176,74 +182,74 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+        private void handleServerPublicKeyAndGenAESKey(String publicKey) {
+            try {
+                byte[] server_rsa_public_key_content_bytes = Base64.getDecoder().decode(publicKey);
+                RSAPublicKey serverPublicKey = covertToPublicKey(server_rsa_public_key_content_bytes);
+
+                serverEncryptCipher = Cipher.getInstance("RSA/NONE/PKCS1Padding"); //NoSuchPaddingException
+                serverEncryptCipher.init(Cipher.ENCRYPT_MODE, serverPublicKey); //InvalidKeyException
+
+                Log.d("Socket", "Server Public Key: ok");
+            } catch (Exception e) {
+                Log.d("Socket", "Decode server public key failed");
+                Log.d("Socket", e.toString());
+            }
+
+
+            try {
+                KeyGenerator generator = KeyGenerator.getInstance("AES");
+                generator.init(256);
+                SecretKey key = generator.generateKey();
+
+                // Important, send the key first, then set the variable "shareAESCipher"
+
+                this.sendMessage("aeskey>" + Base64.getEncoder().encodeToString(key.getEncoded()));
+
+                IvParameterSpec iv = new IvParameterSpec("ABCDEFGHIJKLMNOP".getBytes());
+
+
+                shareAESCipher = Cipher.getInstance("AES/CFB/NoPadding");
+                shareAESCipher.init(Cipher.ENCRYPT_MODE, key, iv);
+
+                Log.d("Socket", "Share AES Key: " + TcpClient.bytesToHex(key.getEncoded()));
+            } catch (Exception e) {
+                Log.d("Socket", "Create share aes key failed");
+                Log.d("Socket", e.toString());
+            }
+        }
+
 
         private void connectTask_OnResponse(String response) {
-            String[] split = response.split("<");
-            String type = split[0];
-            String msg = split[1];
+            if (this.serverEncryptCipher == null || this.shareAESCipher == null) {
+                String[] split = response.split("<");
+                String type = split[0]; // TODO
+                String msg = split[1];
 
-            if (type.equals("pong")) {
-                if (msg.equals(lastMsgUUID)) { // the server echo back the message uuid, clear the input
-                    etMessage.setText("");
-                }
-            } else if (type.equals("copy")) {
-                ClipData clip = ClipData.newPlainText("Copied Text", msg);
-                clipboard.setPrimaryClip(clip);
+                handleServerPublicKeyAndGenAESKey(msg);
+            } else {
+                String[] split = response.split("<");
+                String type = split[0];
+                String msg = split[1];
 
-                showToast("Copied");
-            } else if (type.equals("rsa")) {
-                // TODO check is key always exists
+                if (type.equals("pong")) {
+                    if (msg.equals(lastMsgUUID)) { // the server echo back the message uuid, clear the input
+                        etMessage.setText("");
+                    }
+                } else if (type.equals("copy")) {
+                    ClipData clip = ClipData.newPlainText("Copied Text", msg);
+                    clipboard.setPrimaryClip(clip);
 
-
-                try {
-                    byte[] server_rsa_public_key_content_bytes = Base64.getDecoder().decode(msg);
-                    RSAPublicKey serverPublicKey = covertToPublicKey(server_rsa_public_key_content_bytes);
-
-                    serverEncryptCipher = Cipher.getInstance("RSA/NONE/PKCS1Padding"); //NoSuchPaddingException
-                    serverEncryptCipher.init(Cipher.ENCRYPT_MODE, serverPublicKey); //InvalidKeyException
-
-                    Log.d("Socket", "Server Public Key: ok");
-                } catch (Exception e) {
-                    Log.d("Socket", "Decode server public key failed");
-                    Log.d("Socket", e.toString());
-                }
+                    showToast("Copied");
+                } else if (type.equals("rsa")) {
+                    // TODO check is key always exists
 
 
-                try {
-//                    KeyPairGenerator keyPairGenerator = null;
-//                    keyPairGenerator = KeyPairGenerator.getInstance("RSA"); //NoSuchAlgorithmException
-//
-//                    keyPairGenerator.initialize(1024);
-//                    KeyPair keyPair = keyPairGenerator.generateKeyPair();
-//                    RSAPublicKey rsaPublicKey = (RSAPublicKey)keyPair.getPublic();
-//                    RSAPrivateKey rsaPrivateKey = (RSAPrivateKey)keyPair.getPrivate();
-//
-//                    myselfDecryptCipher = Cipher.getInstance("RSA/NONE/PKCS1Padding"); //NoSuchPaddingException
-//                    myselfDecryptCipher.init(Cipher.DECRYPT_MODE,rsaPrivateKey); //InvalidKeyException
 
-                    KeyGenerator generator = KeyGenerator.getInstance("AES");
-                    generator.init(256);
-                    SecretKey key = generator.generateKey();
-
-                    shareAESCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-                    shareAESCipher.init(Cipher.ENCRYPT_MODE, key);
-
-
-//                    byte[] a = "aeskey>".getBytes();
-//                    byte[] b = key.getEncoded();
-//                    byte[] c = new byte[a.length + b.length];
-//                    System.arraycopy(a, 0, c, 0, a.length);
-//                    System.arraycopy(b, 0, c, a.length, b.length);
-
-                    this.sendMessage("aeskey>" + Base64.getEncoder().encodeToString(key.getEncoded()));
-
-                    //Log.d("Socket", "Myself Public Key: " + Base64.getEncoder().encodeToString(rsaPublicKey.getEncoded()));
-                    //Log.d("Socket", "Myself Private Key: " + new String(rsaPrivateKey.getEncoded()));
-                } catch (Exception e) {
-                    Log.d("Socket", "Create share aes key failed");
-                    Log.d("Socket", e.toString());
                 }
             }
+
+
         }
 
     }
