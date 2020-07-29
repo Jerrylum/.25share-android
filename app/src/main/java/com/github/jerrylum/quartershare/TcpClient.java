@@ -3,7 +3,9 @@ package com.github.jerrylum.quartershare;
 import android.util.Log;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.InetAddress;
@@ -19,7 +21,7 @@ public class TcpClient {
     // while this is true, the server will continue running
     private boolean mRun = false;
     // used to send messages
-    private PrintWriter mBufferOut;
+    private OutputStream mBufferOut;
     // used to read messages from the server
     private BufferedReader mBufferIn;
 
@@ -35,16 +37,20 @@ public class TcpClient {
     /**
      * Sends the message entered by client to the server
      *
-     * @param message text entered by client
+     * @param message byte entered by client
      */
-    public void sendMessage(final String message) {
+    public void sendMessage(final byte[] message) {
         Runnable runnable = new Runnable() {
             @Override
             public void run() {
-                if (mBufferOut != null) {
-                    Log.d("Socket", "Sending: " + message);
-                    mBufferOut.println(message);
-                    mBufferOut.flush();
+                try {
+                    if (mBufferOut != null) {
+                        Log.d("Socket", "Sending: byte array object -> " + bytesToHex(message));
+                        mBufferOut.write(message);
+                        mBufferOut.flush();
+                    }
+                } catch (IOException e) {
+                    Log.d("Socket", "Sending: byte array object failed");
                 }
             }
         };
@@ -59,9 +65,13 @@ public class TcpClient {
 
         mRun = false;
 
-        if (mBufferOut != null) {
-            mBufferOut.flush();
-            mBufferOut.close();
+        try {
+            if (mBufferOut != null) {
+                mBufferOut.flush();
+                mBufferOut.close();
+            }
+        } catch (IOException e) {
+
         }
 
         mMessageListener = null;
@@ -86,7 +96,9 @@ public class TcpClient {
             try {
 
                 //sends the message to the server
-                mBufferOut = new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket.getOutputStream())), true);
+                //mBufferOut = new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket.getOutputStream())), true);
+
+                mBufferOut = socket.getOutputStream();
 
                 //receives the message which the server sends back
                 mBufferIn = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -130,4 +142,16 @@ public class TcpClient {
         public void messageReceived(String type, String message);
     }
 
+
+    private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
+
+    public static String bytesToHex(byte[] bytes) {
+        char[] hexChars = new char[bytes.length * 2];
+        for (int j = 0; j < bytes.length; j++) {
+            int v = bytes[j] & 0xFF;
+            hexChars[j * 2] = HEX_ARRAY[v >>> 4];
+            hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
+        }
+        return new String(hexChars);
+    }
 }
