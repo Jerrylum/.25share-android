@@ -1,21 +1,19 @@
 package com.github.jerrylum.quartershare;
 
 import android.util.Log;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
+
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 
 public class TcpClient {
     public String serverIP = ""; //server IP address
     public int serverPort = 0;
     // message to send to the server
-    private String mServerMessage;
+    private byte[] mServerMessage;
     // sends message received notifications
     private OnMessageReceived mMessageListener = null;
     // while this is true, the server will continue running
@@ -23,7 +21,7 @@ public class TcpClient {
     // used to send messages
     private OutputStream mBufferOut;
     // used to read messages from the server
-    private BufferedReader mBufferIn;
+    private InputStream mBufferIn;
 
     /**
      * Constructor of the class. OnMessagedReceived listens for the messages received from server
@@ -101,26 +99,34 @@ public class TcpClient {
                 mBufferOut = socket.getOutputStream();
 
                 //receives the message which the server sends back
-                mBufferIn = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                mBufferIn = socket.getInputStream();
 
 
                 //in this while the client listens for the messages sent by the server
                 while (mRun) {
+                    Log.d("Socket", "C: Reading...");
 
-                    mServerMessage = mBufferIn.readLine();
+                    byte[] buffer = new byte[2];
+                    mBufferIn.read(buffer, 0, 2);
+                    int how_long = (buffer[0] & 0xFF) + (buffer[1] & 0xFF) * 255;
+
+                    if (how_long == 0)
+                        break;
+
+                    buffer = new byte[how_long];
+                    mBufferIn.read(buffer, 0, how_long);
+                    mServerMessage = buffer;
+
+                    Log.d("Socket", "C: Ok...");
 
                     if (mServerMessage != null && mMessageListener != null) {
                         //call the method messageReceived from MyActivity class
-                        mMessageListener.messageReceived("from", mServerMessage);
+                        mMessageListener.messageReceived(mServerMessage);
                     }
-
                 }
-
-                Log.d("Socket", "S: Received Message: '" + mServerMessage + "'");
-
             } catch (Exception e) {
                 if (mMessageListener != null)
-                    mMessageListener.messageReceived("toast", "Connection exception (s)");
+                    mMessageListener.sendAction("toast", "Connection exception (s)");
                 Log.e("Socket", "S: Error", e);
             } finally {
                 //the socket must be closed. It is not possible to reconnect to this socket
@@ -130,7 +136,7 @@ public class TcpClient {
 
         } catch (Exception e) {
             if (mMessageListener != null)
-                mMessageListener.messageReceived("toast", "Connection exception (c)");
+                mMessageListener.sendAction("toast", "Connection exception (c)");
             Log.e("Socket", "C: Error", e);
         }
 
@@ -139,7 +145,8 @@ public class TcpClient {
     //Declare the interface. The method messageReceived(String message) will must be implemented in the Activity
     //class at on AsyncTask doInBackground
     public interface OnMessageReceived {
-        public void messageReceived(String type, String message);
+        public void messageReceived(byte[] message);
+        public void sendAction(String type, String message);
     }
 
 

@@ -16,11 +16,6 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import java.security.KeyFactory;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
@@ -95,10 +90,11 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public class ConnectTask extends AsyncTask<String, String, TcpClient> {
+    public class ConnectTask extends AsyncTask<String, byte[], TcpClient> {
 
         private Cipher serverEncryptCipher = null;
-        private Cipher shareAESCipher = null;
+        private Cipher shareAESEncryptCipher = null;
+        private Cipher shareAESDecryptCipher = null;
 
         private TcpClient usingTcpClient;
 
@@ -110,10 +106,15 @@ public class MainActivity extends AppCompatActivity {
             //we create a TCPClient object
             usingTcpClient = new TcpClient(ip, port, new TcpClient.OnMessageReceived() {
                 @Override
-                //here the messageReceived method is implemented
-                public void messageReceived(String type, String message) {
+                public void messageReceived(byte[] message) {
                     //this method calls the onProgressUpdate
-                    publishProgress(type, message);
+                    publishProgress("from".getBytes(), message);
+                }
+
+                @Override
+                public void sendAction(String type, String message) {
+                    //this method calls the onProgressUpdate
+                    publishProgress(type.getBytes(), message.getBytes());
                 }
             });
             usingTcpClient.run();
@@ -122,19 +123,17 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        protected void onProgressUpdate(String... values) {
+        protected void onProgressUpdate(byte[]... values) {
             super.onProgressUpdate(values);
 
-
-
-            String type = values[0];
-            String msg = values[1];
+            String type = new String(values[0]);
 
             if (type.equals("from")) {             //response received from server
-                Log.d("Socket", "Response: " + msg);
+                Log.d("Socket", "Response");
 
-                connectTask_OnResponse(msg);       //response received from the tcp client
+                connectTask_OnResponse(values[1]);       //response received from the tcp client
             } else if (type.equals("toast")) {
+                String msg = new String(values[1]);
                 showToast(msg);
             }
         }
@@ -146,8 +145,8 @@ public class MainActivity extends AppCompatActivity {
 
         public void sendMessage(byte[] msg) {
             try {
-                if (shareAESCipher != null) {
-                    usingTcpClient.sendMessage(shareAESCipher.doFinal(msg));
+                if (shareAESEncryptCipher != null) {
+                    usingTcpClient.sendMessage(shareAESEncryptCipher.doFinal(msg));
                     Log.d("Socket", "send message using share aes cipher");
                 } else if (serverEncryptCipher != null) {
                     usingTcpClient.sendMessage(serverEncryptCipher.doFinal(msg));
@@ -193,7 +192,7 @@ public class MainActivity extends AppCompatActivity {
                 Log.d("Socket", "Server Public Key: ok");
             } catch (Exception e) {
                 Log.d("Socket", "Decode server public key failed");
-                Log.d("Socket", e.toString());
+                Log.d("Socket", publicKey);
             }
 
 
@@ -209,8 +208,10 @@ public class MainActivity extends AppCompatActivity {
                 IvParameterSpec iv = new IvParameterSpec("ABCDEFGHIJKLMNOP".getBytes());
 
 
-                shareAESCipher = Cipher.getInstance("AES/CFB/NoPadding");
-                shareAESCipher.init(Cipher.ENCRYPT_MODE, key, iv);
+                shareAESEncryptCipher = Cipher.getInstance("AES/CFB/NoPadding");
+                shareAESEncryptCipher.init(Cipher.ENCRYPT_MODE, key, iv);
+                shareAESDecryptCipher = Cipher.getInstance("AES/CFB/NoPadding");
+                shareAESDecryptCipher.init(Cipher.DECRYPT_MODE, key, iv);
 
                 Log.d("Socket", "Share AES Key: " + TcpClient.bytesToHex(key.getEncoded()));
             } catch (Exception e) {
@@ -220,32 +221,36 @@ public class MainActivity extends AppCompatActivity {
         }
 
 
-        private void connectTask_OnResponse(String response) {
-            if (this.serverEncryptCipher == null || this.shareAESCipher == null) {
+        private void connectTask_OnResponse(byte[] raw) {
+            if (this.serverEncryptCipher == null || this.shareAESEncryptCipher == null) {
+                String response = new String(raw);
+
                 String[] split = response.split("<");
                 String type = split[0]; // TODO
                 String msg = split[1];
 
                 handleServerPublicKeyAndGenAESKey(msg);
             } else {
-                String[] split = response.split("<");
-                String type = split[0];
-                String msg = split[1];
+                try {
+                    String response = new String(shareAESDecryptCipher.doFinal(raw));
 
-                if (type.equals("pong")) {
-                    if (msg.equals(lastMsgUUID)) { // the server echo back the message uuid, clear the input
-                        etMessage.setText("");
+                    String[] split = response.split("<");
+                    String type = split[0];
+                    String msg = split[1];
+
+                    if (type.equals("pong")) {
+                        if (msg.equals(lastMsgUUID)) { // the server echo back the message uuid, clear the input
+                            etMessage.setText("");
+                        }
+                    } else if (type.equals("copy")) {
+                        ClipData clip = ClipData.newPlainText("Copied Text", msg);
+                        clipboard.setPrimaryClip(clip);
+
+                        showToast("Copied");
                     }
-                } else if (type.equals("copy")) {
-                    ClipData clip = ClipData.newPlainText("Copied Text", msg);
-                    clipboard.setPrimaryClip(clip);
-
-                    showToast("Copied");
-                } else if (type.equals("rsa")) {
-                    // TODO check is key always exists
-
-
-
+                } catch (Exception e) {
+                    Log.d("Socket", "Decrypt share aes message failed");
+                    Log.d("Socket", e.toString());
                 }
             }
 
