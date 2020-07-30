@@ -15,10 +15,14 @@ import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import java.io.ByteArrayInputStream;
 import java.security.KeyFactory;
+import java.security.SecureRandom;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.Random;
 import java.util.UUID;
 
 import javax.crypto.Cipher;
@@ -32,10 +36,11 @@ public class MainActivity extends AppCompatActivity {
     CheckBox cbTrim;
 
     ClipboardManager clipboard;
+    Random rand = null;
 
     ConnectTask usingTask = null;
 
-    String lastMsgUUID = null;
+    byte[] lastMsgId = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,6 +59,7 @@ public class MainActivity extends AppCompatActivity {
         etMessage.setFocusableInTouchMode(true);
 
         clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        rand = new Random();
     }
 
     public void saveBtn_onClick(View view) {
@@ -69,6 +75,8 @@ public class MainActivity extends AppCompatActivity {
         }
         usingTask = new ConnectTask();
         usingTask.execute();
+
+        getSupportActionBar().setSubtitle("Connecting");
     }
 
     public void insertBtn_OnClick(View view) {
@@ -80,13 +88,12 @@ public class MainActivity extends AppCompatActivity {
             String msg = etMessage.getText().toString();
 
             if (cbTrim.isChecked())
-                msg = trimMessage(msg);
+                msg = Util.trimMessage(msg);
 
-            lastMsgUUID = UUID.randomUUID().toString().replace("-", "");
+            lastMsgId = new byte[16];
+            rand.nextBytes(lastMsgId);
 
-            String send = lastMsgUUID + ">" + msg;
-
-            usingTask.sendMessage(send);
+            usingTask.sendMessage(Util.joinByteArray(lastMsgId, msg.getBytes()));
         }
     }
 
@@ -200,20 +207,23 @@ public class MainActivity extends AppCompatActivity {
                 KeyGenerator generator = KeyGenerator.getInstance("AES");
                 generator.init(256);
                 SecretKey key = generator.generateKey();
+                byte[] iv_byte = new byte[16];
+                SecureRandom.getInstanceStrong().nextBytes(iv_byte);
+                IvParameterSpec iv = new IvParameterSpec(iv_byte);
 
                 // Important, send the key first, then set the variable "shareAESCipher"
 
-                this.sendMessage("aeskey>" + Base64.getEncoder().encodeToString(key.getEncoded()));
+//                Base64.Encoder enc = Base64.getEncoder();
+//                this.sendMessage(enc.encodeToString(key.getEncoded()) + ">" + enc.encodeToString(iv_byte));
 
-                IvParameterSpec iv = new IvParameterSpec("ABCDEFGHIJKLMNOP".getBytes());
-
+                this.sendMessage(Util.joinByteArray(key.getEncoded(), iv_byte));
 
                 shareAESEncryptCipher = Cipher.getInstance("AES/CFB/NoPadding");
                 shareAESEncryptCipher.init(Cipher.ENCRYPT_MODE, key, iv);
                 shareAESDecryptCipher = Cipher.getInstance("AES/CFB/NoPadding");
                 shareAESDecryptCipher.init(Cipher.DECRYPT_MODE, key, iv);
 
-                Log.d("Socket", "Share AES Key: " + TcpClient.bytesToHex(key.getEncoded()));
+                Log.d("Socket", "Share AES Key: " + Util.bytesToHex(key.getEncoded()));
             } catch (Exception e) {
                 Log.d("Socket", "Create share aes key failed");
                 Log.d("Socket", e.toString());
@@ -225,24 +235,24 @@ public class MainActivity extends AppCompatActivity {
             if (this.serverEncryptCipher == null || this.shareAESEncryptCipher == null) {
                 String response = new String(raw);
 
-                String[] split = response.split("<");
-                String type = split[0]; // TODO
-                String msg = split[1];
-
-                handleServerPublicKeyAndGenAESKey(msg);
+                handleServerPublicKeyAndGenAESKey(response);
             } else {
                 try {
-                    String response = new String(shareAESDecryptCipher.doFinal(raw));
+                    byte[] result = shareAESDecryptCipher.doFinal(raw);
+                    ByteArrayInputStream stream = new ByteArrayInputStream(result);
 
-                    String[] split = response.split("<");
-                    String type = split[0];
-                    String msg = split[1];
+                    int type_flag = (result[0] & 0xFF);
 
-                    if (type.equals("pong")) {
-                        if (msg.equals(lastMsgUUID)) { // the server echo back the message uuid, clear the input
+                    byte[] content_byte = new byte[result.length - 1];
+                    stream.skip(1);
+                    stream.read(content_byte);
+
+                    if (type_flag == ServerPackageFlag.PONG_FLAG) {
+                        if (Arrays.equals(content_byte, lastMsgId)) { // the server echo back the message uuid, clear the input
                             etMessage.setText("");
                         }
-                    } else if (type.equals("copy")) {
+                    } else if (type_flag == ServerPackageFlag.COPY_FLAG) {
+                        String msg = new String(content_byte);
                         ClipData clip = ClipData.newPlainText("Copied Text", msg);
                         clipboard.setPrimaryClip(clip);
 
@@ -271,34 +281,6 @@ public class MainActivity extends AppCompatActivity {
 
     public void showToast(String msg) {
         Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
-    }
-
-    private static String trimMessage(String raw){
-        String rtn = "";
-
-        char lastChar = ' ';
-        for (int i = 0; i < raw.length(); i++) {
-            char nowChar = raw.charAt(i);
-
-            switch (lastChar) { // Important: be careful
-                case '，':
-                case '。':
-                case '、':
-                case '：':
-                case '；':
-                case '？':
-                case '！':
-                    if (nowChar == ' ')
-                        break;
-                default:
-                    rtn += nowChar;
-                    break;
-            }
-
-            lastChar = nowChar;
-        }
-
-        return rtn;
     }
 
 

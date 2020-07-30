@@ -41,15 +41,15 @@ public class TcpClient {
         Runnable runnable = new Runnable() {
             @Override
             public void run() {
-                try {
-                    if (mBufferOut != null) {
-                        Log.d("Socket", "Sending: byte array object -> " + bytesToHex(message));
-                        mBufferOut.write(message);
-                        mBufferOut.flush();
-                    }
-                } catch (IOException e) {
-                    Log.d("Socket", "Sending: byte array object failed");
+            try {
+                if (mBufferOut != null) {
+                    Log.d("Socket", "Sending: byte array object -> " + Util.bytesToHex(message));
+                    mBufferOut.write(message);
+                    mBufferOut.flush();
                 }
+            } catch (IOException e) {
+                Log.d("Socket", "Sending: byte array object failed");
+            }
             }
         };
         Thread thread = new Thread(runnable);
@@ -150,15 +150,4 @@ public class TcpClient {
     }
 
 
-    private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
-
-    public static String bytesToHex(byte[] bytes) {
-        char[] hexChars = new char[bytes.length * 2];
-        for (int j = 0; j < bytes.length; j++) {
-            int v = bytes[j] & 0xFF;
-            hexChars[j * 2] = HEX_ARRAY[v >>> 4];
-            hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
-        }
-        return new String(hexChars);
-    }
 }
