@@ -169,7 +169,7 @@
         android:layout_marginStart="10dp"
         android:layout_marginBottom="8dp"
         android:checked="true"
-        android:text="Trim after punctuation mark"
+        android:text="Trim all spaces"
         app:layout_constraintBottom_toTopOf="@+id/linearLayout"
         app:layout_constraintStart_toStartOf="parent" />
 

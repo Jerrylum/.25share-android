@@ -24,31 +24,32 @@ public class Util {
     }
 
     public static String trimMessage(String raw){
-        String rtn = "";
-
-        char lastChar = ' ';
-        for (int i = 0; i < raw.length(); i++) {
-            char nowChar = raw.charAt(i);
-
-            switch (lastChar) { // Important: be careful
-                case '，':
-                case '。':
-                case '、':
-                case '：':
-                case '；':
-                case '？':
-                case '！':
-                    if (nowChar == ' ')
-                        break;
-                default:
-                    rtn += nowChar;
-                    break;
-            }
-
-            lastChar = nowChar;
-        }
-
-        return rtn;
+//        String rtn = "";
+//
+//        char lastChar = ' ';
+//        for (int i = 0; i < raw.length(); i++) {
+//            char nowChar = raw.charAt(i);
+//
+//            switch (lastChar) { // Important: be careful
+//                case '，':
+//                case '。':
+//                case '、':
+//                case '：':
+//                case '；':
+//                case '？':
+//                case '！':
+//                    if (nowChar == ' ')
+//                        break;
+//                default:
+//                    rtn += nowChar;
+//                    break;
+//            }
+//
+//            lastChar = nowChar;
+//        }
+//
+//        return rtn;
+        return raw.replaceAll("\\s", "");
     }
 
 }
