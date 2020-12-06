@@ -116,7 +116,8 @@ public class ConnectTask extends AsyncTask<MainActivity, byte[], TcpClient> {
     }
 
     public void stopClient() {
-        usingTcpClient.stop();
+        if (usingTcpClient != null)
+            usingTcpClient.stop();
     }
 
 
@@ -162,13 +163,16 @@ public class ConnectTask extends AsyncTask<MainActivity, byte[], TcpClient> {
             SecureRandom.getInstanceStrong().nextBytes(iv_byte);
             IvParameterSpec iv = new IvParameterSpec(iv_byte);
 
+            Log.d("Socket", ">>>>" +  Util.bytesToHex(key.getEncoded()));
+
+
             // Important, send the key first, then set the variable "shareAESCipher"
 
             this.sendMessage(Util.joinByteArray(key.getEncoded(), iv_byte));
 
-            shareAESEncryptCipher = Cipher.getInstance("AES/CFB/NoPadding");
+            shareAESEncryptCipher = Cipher.getInstance("AES/CFB8/NoPadding");
             shareAESEncryptCipher.init(Cipher.ENCRYPT_MODE, key, iv);
-            shareAESDecryptCipher = Cipher.getInstance("AES/CFB/NoPadding");
+            shareAESDecryptCipher = Cipher.getInstance("AES/CFB8/NoPadding");
             shareAESDecryptCipher.init(Cipher.DECRYPT_MODE, key, iv);
 
             activity.getSupportActionBar().setSubtitle("Generated AES encryption key");
